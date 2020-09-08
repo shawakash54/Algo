@@ -1,5 +1,5 @@
 // A java program to sort a nearly sorted array 
-O(nlogk)
+// O(nlogk)
 import java.util.Iterator; 
 import java.util.PriorityQueue; 
 
