@@ -31,14 +31,12 @@ class GFG
 
 	} 
 
-	// A utility function to print the array 
 	private static void printArray(int[] arr, int n) 
 	{ 
 		for(int i = 0; i < n; i++) 
 			System.out.print(arr[i] + " "); 
 	} 
 
-	// Driver Code 
 	public static void main(String[] args) 
 	{ 
 		int k = 3; 
@@ -50,5 +48,3 @@ class GFG
 	} 
 } 
 
-// This code is contributed by 
-// Manpreet Singh(manpreetsngh294) 
