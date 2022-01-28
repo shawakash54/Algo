@@ -45,3 +45,7 @@ Backtracking algorithms are most naturally modeled recursively, though not all r
 
 There must be an element of reflecting on the algorithm's state and deciding to backtrack.
 
+
+Tree
+ - It is an acyclic connected graph
+ 

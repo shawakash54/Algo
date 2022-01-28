@@ -1,0 +1,357 @@
+
+Disk structure:
+    - It has circular tracks.
+    - It has multiple sectors.
+    - Any intersection of a track and sector is a block.
+    - Blocks are defined by track number and sector number.
+    - Usually blocks are of 512 bytes.
+    - We always read and write in terms of blocks.
+    
+
+    For a block of 512 bytes, any particular byte in it can be referred to with block address + offset inside the block.
+
+    0  ...  511
+
+    To reach a particular byte in a disk, we need to know the track number, sector number and the offset in the particular block.
+
+
+Main memory (RAM):
+    - Data when accessed from disk has to be brought in the main memory and then it can be accessed.
+    - Organising the data inside the main memory that is directly used by the programs , that is data structures.
+    - Organising the data on the disk efficiently so that it can efficiently utilised, that is DBMS.
+
+
+How data is oragnised in the disk ?
+    Let's assume the structure of the table is given as following:
+
+    Employee:
+        Column  -   Size(in bytes)
+        ----------------
+        eid     -   10
+        name    -   50
+        dept    -   10
+        section -   8
+        address -   50
+
+        With the above , each row comes out to be 128 bytes.
+
+        If we want to store this in the database of block size 512 bytes, we can see 4 rows of the above table can be stored in one block.
+
+        For let's say 100 records, we need 100/4 = 25 such blocks.
+
+
+        Now if we want to query for one row:
+            - Time depends on the number of blocks we access
+            - At most 25 blocks we have to access in our use case above.
+
+            How to reduce this time ?
+                - We can create an index to reduce the time.
+                - Index can be of <eid, pointer to the particular row>
+                - For each record we will have an entry insdie the index
+                - Where do we store this index ? The indices are also stored in the disk itself.
+                    - How much space will the index take on the disk ?
+                        - eid takes 10 bytes, let's assume record pointer takes 6 bytes
+                        - Then each index entry takes 16 bytes.
+                        - Number of index entries in one block = 512/16 = 32 entries.
+                        - Total there are 100 entries, so for 100 entreis we will occupy 100/32 ~ 4 blocks for storing this index
+                    - Now whenever we want to search, we access the index, and for accessing the index, we need to access atmost 4 block of index
+                        and 1 block where the data is actually present.
+                    - Blocks accessed in worst case now came down from 25 to 5 blocks. This is the benefit of index.
+
+                Multi level index:
+                    - Let's say instead of 100, what if we have 1000 records ? 1000 records means 250 blocks and for the above index 
+                        now we have 40 such blocks.
+                    - Searching in the index increases as we have more records
+                    - So, for optimising the search in the index, we can have an index above the index. This can also be based upon the block size.
+                        This index is a sparse index. It will have one entry for one block of index.
+                    - Adding this one more level of index, we reduce the search time
+                    - When data size grows in the database, we go for multi level index to optimise the search time. 
+                    - We want the high level multi level indices to be self managed. If the data size increases, more such multi level 
+                        indices should start to form and should self delete when record number decreases.
+                        - This is where the idea of B and B+ trees comes in. The idea originates from M-way search trees.
+
+
+                    
+                M-way search trees:
+                    - In BST, we can have one key per node and each node can have at most 2 children.
+                    - In M-way search trees, we have more than one key per node and have more than more than 2 children.
+                    - Keys are arranged in ascending order
+                    - If a node has 2 keys, it can have at most 3(m) children
+                    - A M-way search tree can have atmost m children and m-1 keys in a node
+
+                    3-way search tree:
+
+                
+                        20,50
+                    /     |     \
+                10,15   30,35   60,90
+
+
+                    DS representation for 4-Way ST:
+
+                    P1  K1  P2  K2  P3  K3  P4
+                   /        |       |         \
+                  CN        CN      CN        CN
+
+                  P - Pointer to child node
+                  K - Key in the node
+                  CN - Child node
+                
+
+
+                How to utilise M-way search trees for Indexing ?
+
+                Node structure if used for indexing should be like this :
+
+                    P1  K1  RP1  P2  K2  RP2  P3  K3  RP3  P4
+                   /             |            |              \
+                  CN             CN           CN              CN
+
+                  RP - Record pointer on disk
+
+                What is the problem if we use M-way ST ? 
+                    - Insertions will become an issue. Since there is no concept of self balancing here, the tree can be of n lenght
+                        and may lead to linear search of the index only.
+                    - The guidelines to create M-way ST so that it is benefical to search are known by B Tree.
+
+
+                B-Trees:
+                    - For every node, we must fill atleast half. Means for degree m , there must be celiing(m/2) children for every node.
+                        Example, for 10-Way ST, degree = 10, hence there must be atleast 5 children per node. Then only we must look to create a new node
+                            if the present node has atleast 5 children.
+                    - Root can have a minimum of 2 children (means it can have just one key)
+                    - All leaf nodes must be at same level.
+                    - Creation process is bottom up.
+
+                    Creating a B-Tree:
+
+                        m=4
+                        Insert values: 10, 20, 40, 50
+
+                        We can have 4 children per node, viz 3 keys per node.
+                        Hence, after inserting 10, 20 and 40, the tree has a single node like the following:
+
+                            10, 20, 40
+
+                        Now, when we insert 50, it cannot be accomodated by the same node and hence we split the node
+                            moving 40 to a parent node and have the following structure:
+
+                                40
+                              /    \
+                          10, 20    50
+
+                        
+                        We see the tree is growing upwards. Hence, bottom up. Hence we can see B-tree can be used for creating multi level indices.
+
+                        If we insert 2 more values of 60, 70
+
+                                 40
+                              /      \
+                          10, 20   50, 60, 70
+
+                        Now, if we insert 80, the strucutre changes to:
+
+                                     40
+                              /      |      \
+                          10, 20   50, 60    80
+
+
+                        What are B+ Tree:
+                            - Similar to B-tree but the non-leaf nodes will not have any record pointers.
+                                Only the leaf nodes will have the record pointer. All the keys present in the non-leaf nodes will also
+                                be present as a leaf node.
+                            - And every leaf node are connected like a linked list
+
+                                      40
+                             /                  \
+                          15, 30                 70
+                      /     |      \          /      \
+                    10 -> 15,20 -> 30,35 -> 40,50 -> 70,80
+
+                        For B+tree:
+                            - A densed index is formed
+                            - There are no record pointers from non-leaf nodes.
+                            - All leaf nodes will form a linked list
+
+
+                        What will be the order wrt database - It is optimised if it is of the page size.
+                    
+                    B+ is a better selection for database compared to B tree. If we consider that each node is of page size. Then
+                        if it is B tree, we have to fit the record pointers to the desination tuple or value along with the keys in a node. 
+                        This means that the number of keys we can fit in a node is lesser. Each page access basically will result in 1 i/o operation
+                        and is expensive. Hence, if we use B+ tree, the upper level nodes can only hold the keys and can help in reaching the leaf level
+                        key where the record pointers are stored. Hence the I/O are more optimised in B+ trees.
+                        Also, let's assume we are doing range querying and want to search 10 to 30 in the above tree. If it's a B tree, we will have to 
+                        search for each item individually from the top. If it were B+ tree, the leaf nodes will be linked like in a linked list and so we can
+                        also utilise sequential search when it is more optimised compared to searching again from top using the indices. That is how database
+                        does it's query planning. So, with B+ tree, we save on space, we save on time to query as the I/O will be lesser, and also sequential
+                        search can be performed. Range queries are much more effective in a B+ tree.
+
+                        As per postgres research documents, 99% of the space if database indices implemented as B+ tree are occupied by the leaf nodes.
+                        That means only 1% of the space is occupied with the non leaf nodes (which can used for querying out a lot of results.)
+                            Hence if we look at it then if our total index size is 100 GB, the non leaf nodes indices size is about 1GB and that can be fitted
+                            into memory and I/O can be avoided until a leaf node is found. This cannot be done for B tree, as the non leaf nodes cannot all be 
+                            held together in memory at once. Some form of paging needs to be done usually.
+                        
+                        MongoDB uses B tree and Postgres uses B+ tree. MongoDB doesn't scale with indexing. Hence, querying using indices is way faster
+                            in Postgres compared to MongoDB. Discord moved from MongoDB to Cassandra of this exact same thing.
+                            Discord article:
+                                " The messages were stored in a MongoDB collection with a single compound index on channel_id and created_at. Around
+                                November 2015, we reached a 100 million stored messages and at this time we started to see the expected issues appearing.
+                                the data and index could not longer fit in the RAM and latencies started to become unpredictable. It was time to migrate to a 
+                                database more suited to the task. "
+
+                        
+
+How does database decides on which data structure to use for indexing ?
+    - There is not straight answer to this. Different use cases will required different data structures to be used for indexing for better optimisations.
+    - We should first determine the cardinality of a particular data category. Cardinality is the number of elements in a set or other grouping. It tells us 
+        how unique the data is.
+    - If the cardinality is very high (like for storing names in a table) B+ or AVL trees are a better selection.
+        If the cardinality is low, bitmap indexing can be a better option.
+        
+    Bitmap Indexing:
+        - Postgres has support for Bitmap indexes.
+        
+
+        How to build a bitmap for a column with cardinality = 3.
+            - We need three unqiue bitmaps for building the bitmap indexing for the column. The number of bitmaps required is equal to the
+                cardinality.
+            
+            Lets say the column is Status with possible values of Approved, Pending, Rejected. Let's assume there are 6 rows.
+                The rows are
+
+                ID          Status
+                1           Approved
+                2           Approved
+                3           Pending
+                4           Approved
+                5           Rejected
+                6           Rejected
+
+
+                Cardinality is 3.
+
+                Hence we need 3 unique bitmaps. One for each:
+
+                ID:             1   2   3   4   5   6                            
+                Approved:       1   1   0   1   0   0
+
+                Pending :       0   0   1   0   0   0
+
+                Rejected:       0   0   0   0   1   1
+
+
+                The above are the bitmap index for status column.
+                Now, if we want to find all the rows with status Approved, we have to go through the bitmap of Approved and look for values where the bit
+                    is set to 1.
+
+                If we want to find all the rows which have the status set to either Approved or Pending. We will have to go through 2 bitmaps and do the
+                    OR operation on the bits and find the output.
+                
+                Bitmaps are not enough to find the actual tuples. It can be used with B+ trees to optimise the query performance. It can be
+                    used to find the ids which are derivable from the query and then those ids can be searched for with the help of a B+ tree index.
+
+                
+
+                
+
+In Memory database internals (Aerospike, VoltDB, Redis, Memcached):
+    - Also known as in-memory database. The data is saved in RAM/ in-memory unlike RDBMS where the data is saved in the disk.
+
+    How do RDBMS work ?
+        In initial times, the working of the RDBMS was like the following:
+
+            Query  -->  SQL Engine   -->   Disk
+
+            SQL engine would parse any query and would then fetch the data from disk. When price of RAM dropped, a new Buffer pool was introduces.
+
+            Query  -->  SQL Engine   -->   Buffer pool (RAM)   -->  Disk
+
+            Any recently evaluated query would then be saved in Buffer pool. Hence, SQL engine can now check in the buffer pool first,
+                and then go for disk if not present. This helped in optimising RDBMS.
+
+    People then thought of not storing the data in disk and only storing it in-memory stores such as RAM to make the access much faster.
+        This is what gave the birth to Real time databases.
+
+            Query  -->  SQL Engine   -->   RAM
+
+            SQL engine queries from RAM instead of disk here.
+
+
+            Real time database                  RDBMS
+        -   High cost                           Low cost
+        -   Volatile(NVRAM)                     Durable
+        -   High performance (100x)             Low performance
+        -   WAL for recovery                    X
+        -   No Serialization                    Serialization required
+        -   AVL                                 B+ Tree
+
+        NVRAM - Non volatile RAM.
+                        
+                
+        Real time databases still have disks, only to make the system more reliable. All the WAL files (write ahead logs) are stored in the disk.
+            If for some reason, the system crashes, the data from the WAL file(disk) can be used to repopulate the memory. RAM is very volatile.
+            Researches are going on for using NVRAM, non volatile RAM for use. These are basically super capacitors or battery powered RAM which
+            still remembers what it had even after restart. In this case, we might not need disks at all.
+
+            Not only AVL trees, but we can use different data structure to make our data access patterns faster. 
+                - Arrays
+                - Chained bucket hashing
+                - Extendable hashing
+                - Linear hashing
+                - Modified linear hashing
+
+            
+            How durability is handled in real time databases ?
+                - WAL approach: Appends in Hard disk are much faster. Since anything written is written to the hard disk sequentially and
+                    the head of the disk need not move randomly. So, the I/O operation will be much faster.
+
+                    query    --->    query engine     --->   RAM
+                                                \             |
+                                                  \           |
+                                                    \         |
+                                                 DML/ \       |
+                                                   DDL  \     |
+                                                          \   |
+                                                        WAL + Backups(DISK)
+                                                
+                        Query engine is also responsible for writing DML and DDL queries into the file. It can be done in a background thread as well.
+                        All the update, creation of table queries will now be send to WAL file as well. Just the queries are appended.
+
+                        Also, the data structure state from RAM is snapshoted into the disk very regularly. We can optimise the snapshot intervals.
+                        We can also take the backup and put into S3.
+
+                        The advantage of storing queries are that let's say if the system chrases. All the data from RAM will be gone. We can just replay
+                        all the queries from the begning and bring the system to the last present state when the system had crashed.
+                            The reason to take regular snapshots are because we don't want to replay all the queries from the start. We can take the last snapshot
+                            and then replay only the queries which were stored after that.
+                            Also the number of queries which we have to replay might be very high and identical to each other. So, we do something known
+                            as Compaction. We might be updating the same rows a number of times. And we are only interested with the last state and not the state
+                            in between. We can go for compaction where the queries are compacted. Compaction will make the WAL file very small.
+
+                            Also, we can delete the previous WAL files once we take a snapshot and create a new WAL file. This way we can also prevent the disk
+                            getting overloaded with WAL files.
+
+                    How to ensure high availability ?
+                        - Same as RDBMS. We can have a hot standby backup slave machine running having the exact state of data as in the master. 
+                        Once the master goes down, we can switch to the slave. 
+
+                    What is the limit of RAM ? 
+                        - We can in today's world we can store upto 200-300DB of data. If we need more data, we have to go for sharding.
+
+                    Use cases:
+                        - AD exchange bidding websites.
+
+
+Good articles:
+ - http://highscalability.com/blog/2010/12/6/what-the-heck-are-you-actually-using-nosql-for.html
+ - 
+
+        
+
+
+                
+
+            
+                
